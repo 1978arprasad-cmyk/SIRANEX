@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SIRANEX — Live Messages</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main class="app">
+      <header class="app__header">
+        <h1>SIRANEX</h1>
+        <p class="app__subtitle">Real-time messages across every open device</p>
+        <p id="status" class="status status--connecting">Connecting…</p>
+      </header>
+
+      <section id="messages" class="messages" aria-live="polite">
+        <p class="messages__empty">No messages yet. Send the first one below.</p>
+      </section>
+
+      <form id="composer" class="composer" autocomplete="off">
+        <input
+          id="content"
+          class="composer__input"
+          type="text"
+          placeholder="Type a message…"
+          maxlength="500"
+          required
+        />
+        <button id="send" class="composer__send" type="submit">Send</button>
+      </form>
+    </main>
+
+    <!-- Supabase JS client (v2) from the official CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Your Supabase URL + key (edit config.js before uploading) -->
+    <script src="config.js"></script>
+    <!-- App logic -->
+    <script src="app.js"></script>
+  </body>
+</html>
