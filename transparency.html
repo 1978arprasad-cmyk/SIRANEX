@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="te">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#1e3a8a" />
+    <title>Transparency · Prajadarbar</title>
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" type="image/svg+xml" href="assets/icon-192.svg" />
+    <link rel="stylesheet" href="css/app.css" />
+  </head>
+  <body>
+    <div class="gov-strip"></div>
+    <div id="app-root"></div>
+
+    <main class="page">
+      <h1 data-t="nav_transparency">Transparency</h1>
+      <p class="muted">Aggregate, anonymised statistics for the public. No personally identifiable information is shown.</p>
+
+      <section class="grid grid--6" id="kpis"></section>
+
+      <section class="grid grid--2" style="margin-top:24px;">
+        <div class="card">
+          <div class="card__title"><h3 data-t="dash_dept_breakdown">Department-wise</h3></div>
+          <div class="chartbox"><canvas id="ch-dept"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card__title"><h3>SLA Status (live)</h3></div>
+          <div class="chartbox"><canvas id="ch-sla"></canvas></div>
+        </div>
+      </section>
+
+      <section class="card" style="margin-top:24px;">
+        <div class="card__title"><h3 data-t="dash_mandal_heatmap">Mandal heatmap</h3></div>
+        <div id="map"></div>
+      </section>
+
+      <p class="footer">Updated in real-time from the Prajadarbar database.</p>
+    </main>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
+    <script src="js/i18n.js"></script>
+    <script src="js/supabase-init.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/transparency-page.js"></script>
+  </body>
+</html>

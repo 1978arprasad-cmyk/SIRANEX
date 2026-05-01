@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="te">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#1e3a8a" />
+    <title>Officer Login · Prajadarbar</title>
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" type="image/svg+xml" href="assets/icon-192.svg" />
+    <link rel="stylesheet" href="css/app.css" />
+  </head>
+  <body>
+    <div class="gov-strip"></div>
+    <div id="app-root"></div>
+
+    <main class="page page--narrow">
+      <h1 data-t="login_title">Officer / Admin login</h1>
+
+      <div id="demo-card" class="card hidden">
+        <div class="demo-banner">DEMO MODE — pick a role to explore the dashboards instantly. No real account is needed.</div>
+        <div class="grid grid--2">
+          <button class="btn btn--secondary" data-demo="citizen">👤 Citizen</button>
+          <button class="btn btn--secondary" data-demo="officer_revenue">🏛️ Officer · Revenue</button>
+          <button class="btn btn--secondary" data-demo="officer_housing">🏠 Officer · Housing</button>
+          <button class="btn btn--secondary" data-demo="hod_revenue">🧭 HoD · Revenue</button>
+          <button class="btn btn--secondary" data-demo="field_tir">🚐 Field · Tirumalayapalem</button>
+          <button class="btn btn--primary"   data-demo="collector">⭐ District Collector</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Email + password</h3>
+        <form id="pw-form">
+          <div class="field"><label data-t="login_email">Email</label><input id="pw-email" type="email" required></div>
+          <div class="field"><label data-t="login_password">Password</label><input id="pw-pwd" type="password" required></div>
+          <button class="btn btn--primary btn--block" data-t="login_btn">Sign in</button>
+        </form>
+        <p class="muted" style="margin-top:10px;">For real production use only. In DEMO_MODE you can also use the buttons above.</p>
+      </div>
+
+      <div class="card">
+        <h3>Mobile OTP</h3>
+        <form id="otp-form">
+          <div class="field"><label data-t="field_mobile">Mobile / Email</label><input id="otp-id" required></div>
+          <div class="field hidden" id="otp-code-wrap"><label data-t="login_otp">OTP</label><input id="otp-code" inputmode="numeric"></div>
+          <button id="otp-btn" class="btn btn--primary btn--block" data-t="login_send_otp">Send OTP</button>
+        </form>
+      </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
+    <script src="js/i18n.js"></script>
+    <script src="js/supabase-init.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/auth.js"></script>
+    <script>
+      (async function () {
+        PrajaUtils.buildHeader({ mountTo: document.getElementById("app-root") });
+        PrajaI18n.apply(document);
+
+        const cfg = window.PRAJA_CONFIG;
+        if (cfg.DEMO_MODE) document.getElementById("demo-card").classList.remove("hidden");
+
+        document.querySelectorAll("[data-demo]").forEach(function (b) {
+          b.addEventListener("click", async function () {
+            const role = b.getAttribute("data-demo");
+            await PrajaAuth.loginDemo(role);
+            redirect(role);
+          });
+        });
+
+        function redirect(role) {
+          const next = PrajaUtils.qs("next");
+          if (next) { location.href = next; return; }
+          if (role === "collector" || role === "hod_revenue") location.href = "collector.html";
+          else if (role === "officer_revenue" || role === "officer_housing") location.href = "officer.html";
+          else if (role === "field_tir") location.href = "field.html";
+          else location.href = "index.html";
+        }
+
+        document.getElementById("pw-form").addEventListener("submit", async function (e) {
+          e.preventDefault();
+          try {
+            await PrajaAuth.signInPassword(
+              document.getElementById("pw-email").value.trim(),
+              document.getElementById("pw-pwd").value
+            );
+            const sess = await PrajaAuth.getEffectiveSession();
+            const role = sess && sess.profile ? sess.profile.role : "citizen";
+            redirect(role);
+          } catch (e) { PrajaUtils.toast(e.message || "Sign in failed", "error"); }
+        });
+
+        let otpStage = "send";
+        const otpBtn  = document.getElementById("otp-btn");
+        const otpId   = document.getElementById("otp-id");
+        const otpWrap = document.getElementById("otp-code-wrap");
+        const otpCode = document.getElementById("otp-code");
+        document.getElementById("otp-form").addEventListener("submit", async function (e) {
+          e.preventDefault();
+          try {
+            if (otpStage === "send") {
+              await PrajaAuth.sendOtp(otpId.value.trim());
+              otpStage = "verify"; otpWrap.classList.remove("hidden");
+              otpBtn.textContent = "Verify OTP";
+              PrajaUtils.toast("OTP sent. Check your phone / email.", "ok");
+            } else {
+              await PrajaAuth.verifyOtp(otpId.value.trim(), otpCode.value.trim());
+              const sess = await PrajaAuth.getEffectiveSession();
+              redirect(sess && sess.profile ? sess.profile.role : "citizen");
+            }
+          } catch (e) { PrajaUtils.toast(e.message || "OTP failed", "error"); }
+        });
+      })();
+    </script>
+  </body>
+</html>

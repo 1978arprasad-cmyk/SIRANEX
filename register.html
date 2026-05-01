@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="te">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#1e3a8a" />
+    <title>Lodge a grievance · Prajadarbar</title>
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" type="image/svg+xml" href="assets/icon-192.svg" />
+    <link rel="stylesheet" href="css/app.css" />
+  </head>
+  <body>
+    <div class="gov-strip"></div>
+    <div id="app-root"></div>
+
+    <main class="page page--narrow">
+      <h1 data-t="reg_title">Lodge a grievance</h1>
+      <p class="muted" data-t="reg_subtitle">All fields marked * are required.</p>
+
+      <form id="reg-form" class="card" autocomplete="off">
+        <div class="field--row">
+          <div class="field">
+            <label data-t="field_name">Applicant name</label>
+            <input id="r-name" required maxlength="120"/>
+          </div>
+          <div class="field">
+            <label data-t="field_guardian">Father / Husband</label>
+            <input id="r-guardian" maxlength="120"/>
+          </div>
+        </div>
+
+        <div class="field--row">
+          <div class="field">
+            <label data-t="field_gender">Gender</label>
+            <select id="r-gender">
+              <option value="">—</option>
+              <option value="Male"   data-t="male">Male</option>
+              <option value="Female" data-t="female">Female</option>
+              <option value="Other"  data-t="other">Other</option>
+            </select>
+          </div>
+          <div class="field">
+            <label data-t="field_mobile">Mobile number</label>
+            <input id="r-mobile" type="tel" inputmode="numeric" pattern="[0-9]{10}" maxlength="10" required placeholder="9876543210"/>
+            <small data-t="required">10 digit mobile, OTP optional in demo mode.</small>
+          </div>
+        </div>
+
+        <div class="field--row">
+          <div class="field">
+            <label data-t="field_aadhaar">Aadhaar (last 4)</label>
+            <input id="r-aadhaar4" maxlength="4" inputmode="numeric"/>
+          </div>
+          <div class="field">
+            <label data-t="field_mandal">Mandal</label>
+            <select id="r-mandal" required></select>
+          </div>
+        </div>
+
+        <div class="field--row">
+          <div class="field">
+            <label data-t="field_panchayat">Panchayat / Village</label>
+            <select id="r-panchayat"></select>
+          </div>
+          <div class="field">
+            <label data-t="field_address">Address / Village</label>
+            <input id="r-address" maxlength="200"/>
+          </div>
+        </div>
+
+        <div class="field--row">
+          <div class="field">
+            <label data-t="field_department">Department</label>
+            <select id="r-department" required></select>
+          </div>
+          <div class="field">
+            <label data-t="field_subject">Subject / Scheme</label>
+            <select id="r-subject"></select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label data-t="field_description">Describe your problem</label>
+          <textarea id="r-description" required maxlength="2000" rows="5"></textarea>
+          <button type="button" class="btn btn--ghost btn--sm" id="voice-btn" style="justify-self:start;" data-t="voice_input">🎙️ Speak in Telugu</button>
+        </div>
+
+        <div class="field">
+          <label data-t="field_attachments">Photos / documents (optional)</label>
+          <input id="r-files" type="file" accept="image/*,application/pdf" multiple capture="environment"/>
+        </div>
+
+        <div class="field row">
+          <button type="button" class="btn btn--secondary btn--sm" id="gps-btn" data-t="field_gps_capture">Capture my GPS location</button>
+          <span id="gps-status" class="muted"></span>
+        </div>
+
+        <div class="field field--inline">
+          <input id="r-consent" type="checkbox" required/>
+          <label for="r-consent" data-t="consent">I confirm the information is correct.</label>
+        </div>
+
+        <button type="submit" class="btn btn--primary btn--block" id="submit-btn" data-t="submit_grievance">Submit grievance</button>
+      </form>
+
+      <div id="success" class="card hidden" style="text-align:center;">
+        <h2 data-t="reg_success_title">Grievance registered</h2>
+        <p class="muted" data-t="reg_success_sub">Save this Grievance ID. We have also sent it via SMS and WhatsApp.</p>
+        <p><span id="success-gid" class="gid gid--lg"></span></p>
+        <p class="row" style="justify-content:center;">
+          <a class="btn btn--primary" id="success-track" data-t="reg_track_btn">Track this grievance</a>
+          <a class="btn btn--secondary" href="register.html" data-t="reg_register_another">Lodge another</a>
+        </p>
+      </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
+    <script src="js/i18n.js"></script>
+    <script src="js/supabase-init.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/notifications.js"></script>
+    <script src="js/register-page.js"></script>
+  </body>
+</html>
