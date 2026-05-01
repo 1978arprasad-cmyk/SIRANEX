@@ -1,41 +1,129 @@
 <!doctype html>
-<html lang="en">
+<html lang="te">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>SIRANEX — Live Messages</title>
-    <link rel="stylesheet" href="style.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#1e3a8a" />
+    <title>Prajadarbar – ప్రజాదర్బార్ – Khammam District</title>
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" type="image/svg+xml" href="assets/icon-192.svg" />
+    <link rel="apple-touch-icon" href="assets/icon-192.svg" />
+    <link rel="stylesheet" href="css/app.css" />
   </head>
   <body>
-    <main class="app">
-      <header class="app__header">
-        <h1>SIRANEX</h1>
-        <p class="app__subtitle">Real-time messages across every open device</p>
-        <p id="status" class="status status--connecting">Connecting…</p>
-      </header>
+    <div class="gov-strip"></div>
+    <div id="app-root"></div>
 
-      <section id="messages" class="messages" aria-live="polite">
-        <p class="messages__empty">No messages yet. Send the first one below.</p>
+    <main class="page">
+      <section class="hero">
+        <div>
+          <h1 data-t="home_hero_title">Your voice. Our action. Within 90 days.</h1>
+          <p data-t="home_hero_sub">Lodge any grievance against any government department in Khammam district.</p>
+        </div>
+        <div class="hero__cta">
+          <a class="btn btn--saffron" href="register.html" data-t="home_cta_register">Lodge a grievance</a>
+          <a class="btn btn--secondary" href="track.html"   data-t="home_cta_track">Track my grievance</a>
+        </div>
       </section>
 
-      <form id="composer" class="composer" autocomplete="off">
-        <input
-          id="content"
-          class="composer__input"
-          type="text"
-          placeholder="Type a message…"
-          maxlength="500"
-          required
-        />
-        <button id="send" class="composer__send" type="submit">Send</button>
-      </form>
+      <h2 style="margin: 24px 0 12px;" data-t="home_steps">How it works</h2>
+      <div class="steps">
+        <div class="step"><div class="step__n">1</div><h4 data-t="step_1_t">Register</h4><p data-t="step_1_d">Fill the bilingual form with your mobile.</p></div>
+        <div class="step"><div class="step__n">2</div><h4 data-t="step_2_t">Get ID + SMS</h4><p data-t="step_2_d">Unique grievance ID + tracking link.</p></div>
+        <div class="step"><div class="step__n">3</div><h4 data-t="step_3_t">Department acts</h4><p data-t="step_3_d">GPS-tagged field verification.</p></div>
+        <div class="step"><div class="step__n">4</div><h4 data-t="step_4_t">Resolved & rated</h4><p data-t="step_4_d">Within 30/60/90 days.</p></div>
+      </div>
+
+      <section class="grid grid--3" style="margin-top:24px;">
+        <div class="kpi kpi--saffron"><span class="kpi__label" data-t="kpi_total">Total grievances</span>     <span class="kpi__value" id="hk-total">…</span></div>
+        <div class="kpi"><span class="kpi__label" data-t="kpi_pending">Pending</span>                          <span class="kpi__value" id="hk-pending">…</span></div>
+        <div class="kpi kpi--green"><span class="kpi__label" data-t="kpi_resolved">Resolved</span>             <span class="kpi__value" id="hk-resolved">…</span></div>
+      </section>
+
+      <section class="card" style="margin-top:24px;">
+        <div class="card__title">
+          <h3>Live grievance feed</h3>
+          <span class="status status--connecting" id="hk-realtime">Connecting…</span>
+        </div>
+        <div id="hk-feed" class="grid"></div>
+      </section>
+
+      <p class="footer">
+        © Government of Telangana · Khammam District Administration · Prajadarbar
+        · <a href="transparency.html" data-t="nav_transparency">Transparency</a>
+        · <a href="login.html" data-t="nav_login">Officer Login</a>
+      </p>
     </main>
 
-    <!-- Supabase JS client (v2) from the official CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <!-- Your Supabase URL + key (edit config.js before uploading) -->
     <script src="config.js"></script>
-    <!-- App logic -->
-    <script src="app.js"></script>
+    <script src="js/i18n.js"></script>
+    <script src="js/supabase-init.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/notifications.js"></script>
+    <script>
+      (async function () {
+        PrajaUtils.buildHeader({ mountTo: document.getElementById("app-root") });
+        PrajaI18n.apply(document);
+
+        if ("serviceWorker" in navigator) {
+          try { navigator.serviceWorker.register("./sw.js"); } catch (e) {}
+        }
+
+        // KPIs
+        try {
+          const k = await PrajaApi.getDistrictKPIs();
+          document.getElementById("hk-total").textContent    = PrajaUtils.n(k.total || 0);
+          document.getElementById("hk-pending").textContent  = PrajaUtils.n(k.pending || 0);
+          document.getElementById("hk-resolved").textContent = PrajaUtils.n((k.resolved || 0) + (k.closed || 0));
+        } catch (e) { console.warn(e); }
+
+        async function refreshFeed() {
+          const rows = await PrajaApi.getRecentGrievances(8);
+          const host = document.getElementById("hk-feed"); host.innerHTML = "";
+          rows.forEach(function (g) {
+            const card = PrajaUtils.el("div", { class: "list-row", onclick: function () {
+              location.href = "track.html?gid=" + encodeURIComponent(g.grievance_id) + "&m=" + encodeURIComponent(g.mobile);
+            }}, [
+              PrajaUtils.el("div", { class: "list-row__icon" }, (g.department && g.department.icon) || "📌"),
+              PrajaUtils.el("div", null, [
+                PrajaUtils.el("div", { class: "list-row__title" }, g.grievance_id + " · " + g.applicant_name),
+                PrajaUtils.el("div", { class: "list-row__meta" },
+                  ((g.department ? (PrajaI18n.getLang()==="te"?g.department.name_te:g.department.name_en) : "") +
+                   (g.mandal ? " · " + (PrajaI18n.getLang()==="te"?g.mandal.name_te:g.mandal.name_en) : "") +
+                   " · " + PrajaUtils.formatDateTime(g.created_at))
+                ),
+              ]),
+              PrajaUtils.el("div", { class: "list-row__right" }, [
+                PrajaUtils.statusPill(g.status),
+                PrajaUtils.el("span", { class: PrajaUtils.slaPillClass(PrajaUtils.slaBand(g.created_at, g.status)) },
+                  PrajaUtils.ageDays(g.created_at) + "d"),
+              ])
+            ]);
+            host.appendChild(card);
+          });
+        }
+        await refreshFeed();
+
+        const banner = document.getElementById("hk-realtime");
+        PrajaApi.subscribeGrievances({
+          onInsert: function () {
+            refreshFeed();
+            PrajaApi.getDistrictKPIs().then(function (k) {
+              document.getElementById("hk-total").textContent    = PrajaUtils.n(k.total || 0);
+              document.getElementById("hk-pending").textContent  = PrajaUtils.n(k.pending || 0);
+              document.getElementById("hk-resolved").textContent = PrajaUtils.n((k.resolved || 0) + (k.closed || 0));
+            });
+          },
+          onUpdate: function () { refreshFeed(); },
+        });
+        // best-effort indicator
+        setTimeout(function () {
+          banner.textContent = "Live"; banner.className = "status status--ok";
+        }, 1200);
+      })();
+    </script>
   </body>
 </html>

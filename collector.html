@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="te">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#1e3a8a" />
+    <title>Collector Dashboard · Prajadarbar</title>
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" type="image/svg+xml" href="assets/icon-192.svg" />
+    <link rel="stylesheet" href="css/app.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  </head>
+  <body>
+    <div class="gov-strip"></div>
+    <div id="app-root"></div>
+
+    <main class="page page--wide">
+      <div class="row" style="margin-bottom:8px;">
+        <h1 data-t="dash_title" style="margin:8px 0;">Collector – District Dashboard</h1>
+        <span id="who" class="pill pill--blue"></span>
+        <div class="spacer"></div>
+        <span class="status status--ok" id="rt-banner">Live</span>
+        <button class="btn btn--ghost btn--sm" id="logout-btn" data-t="nav_logout">Sign out</button>
+      </div>
+
+      <div class="grid grid--6" id="kpis"></div>
+
+      <div class="grid grid--2" style="margin-top:16px;">
+        <div class="card">
+          <div class="card__title">
+            <h3 data-t="dash_dept_breakdown">Department-wise</h3>
+            <button class="btn btn--ghost btn--sm" id="exp-dept">⤓ CSV</button>
+          </div>
+          <div class="chartbox"><canvas id="ch-dept"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card__title">
+            <h3>SLA distribution</h3>
+            <span class="muted" id="sla-summary"></span>
+          </div>
+          <div class="chartbox"><canvas id="ch-sla"></canvas></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <div class="card__title">
+          <h3 data-t="dash_mandal_heatmap">Mandal heatmap</h3>
+          <div class="row">
+            <select id="heat-metric">
+              <option value="total">Total</option>
+              <option value="pending">Pending</option>
+              <option value="overdue">Overdue</option>
+              <option value="resolved">Resolved</option>
+            </select>
+          </div>
+        </div>
+        <div id="map"></div>
+      </div>
+
+      <div class="grid grid--2" style="margin-top:16px;">
+        <div class="card">
+          <div class="card__title"><h3 data-t="dash_top_pending">Top 10 pending</h3></div>
+          <div class="table-wrap">
+            <table class="table" id="tbl-pending">
+              <thead><tr><th>GID</th><th>Applicant</th><th>Dept</th><th>Mandal</th><th>Age</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card__title"><h3 data-t="dash_top_overdue">Top 10 overdue</h3></div>
+          <div class="table-wrap">
+            <table class="table" id="tbl-overdue">
+              <thead><tr><th>GID</th><th>Applicant</th><th>Dept</th><th>Mandal</th><th>Days</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <div class="card__title"><h3 data-t="dash_dept_breakdown">Department scorecard</h3></div>
+        <div class="table-wrap">
+          <table class="table" id="tbl-dept">
+            <thead><tr><th>Department</th><th class="num">Total</th><th class="num">Pending</th><th class="num">Resolved</th><th class="num">Overdue</th><th class="num">Avg ★</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <div class="card__title"><h3 data-t="dash_mandal_heatmap">Mandal scorecard</h3></div>
+        <div class="table-wrap">
+          <table class="table" id="tbl-mandal">
+            <thead><tr><th>Mandal</th><th class="num">Total</th><th class="num">Pending</th><th class="num">Resolved</th><th class="num">Overdue</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px; text-align:center;">
+        <button class="btn btn--saffron" id="exp-excel" data-t="dash_export_excel">Export to Excel</button>
+        <button class="btn btn--primary"  id="exp-pdf"   data-t="dash_export_pdf">Export to PDF</button>
+        <button class="btn btn--secondary" id="goto-officer">Open officer view</button>
+      </div>
+
+      <p class="footer">All data is real-time. Last refresh: <span id="last-refresh">…</span></p>
+    </main>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
+    <script src="js/i18n.js"></script>
+    <script src="js/supabase-init.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/notifications.js"></script>
+    <script src="js/collector-page.js"></script>
+  </body>
+</html>

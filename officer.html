@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="te">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#1e3a8a" />
+    <title>Officer Inbox · Prajadarbar</title>
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" type="image/svg+xml" href="assets/icon-192.svg" />
+    <link rel="stylesheet" href="css/app.css" />
+  </head>
+  <body>
+    <div class="gov-strip"></div>
+    <div id="app-root"></div>
+
+    <main class="page page--wide">
+      <div class="row">
+        <h1 data-t="off_title" style="margin:8px 0;">Officer Inbox</h1>
+        <span id="who" class="pill pill--blue"></span>
+        <div class="spacer"></div>
+        <button class="btn btn--ghost btn--sm" id="logout-btn" data-t="nav_logout">Sign out</button>
+      </div>
+
+      <div class="grid grid--6" id="kpis"></div>
+
+      <div class="filterbar" id="filters"></div>
+
+      <div class="card">
+        <div id="inbox-list" class="grid"></div>
+      </div>
+    </main>
+
+    <div id="modal-host"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
+    <script src="js/i18n.js"></script>
+    <script src="js/supabase-init.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/notifications.js"></script>
+    <script src="js/officer-page.js"></script>
+  </body>
+</html>
