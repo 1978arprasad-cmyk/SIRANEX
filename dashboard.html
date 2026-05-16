@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Daily Dashboard</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; color: #333; margin: 0; padding: 20px; line-height: 1.6; }
+        .container { max-width: 600px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 8px 16px rgba(0,0,0,0.1); }
+        h1 { color: #2c3e50; text-align: center; margin-bottom: 5px; }
+        .clock { text-align: center; font-size: 1.2rem; color: #7f8c8d; margin-bottom: 25px; font-weight: bold; }
+        .alert-box { background-color: #e8f8f5; border-left: 6px solid #1abc9c; padding: 15px; border-radius: 4px; margin-bottom: 25px; }
+        .alert-box h3 { margin: 0 0 5px 0; color: #16a085; }
+        .diary-section { margin-bottom: 25px; }
+        textarea { width: 100%; height: 150px; padding: 12px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; resize: vertical; font-family: inherit; }
+        button { background-color: #3498db; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: 1rem; margin-top: 10px; transition: background 0.3s; }
+        button:hover { background-color: #2980b9; }
+        #save-msg { color: #27ae60; margin-left: 10px; font-weight: bold; display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🗓️ My Daily Dashboard</h1>
+    <div class="clock" id="clock">Loading time...</div>
+
+    <div class="alert-box">
+        <h3>📍 Current Activity:</h3>
+        <p id="current-task" style="font-size: 1.2rem; font-weight: bold; margin:0;">Calculating...</p>
+    </div>
+
+    <div class="diary-section">
+        <h3 style="color: #2c3e50;">📖 Daily Reflections & Storybook Ideas</h3>
+        <textarea id="diary" placeholder="Jot down your daily thoughts, journaling prompts, or new narrative ideas here..."></textarea>
+        <button onclick="saveDiary()">Save Entry</button>
+        <span id="save-msg">✓ Saved locally!</span>
+    </div>
+
+</div>
+
+<script>
+    // Schedule Logic
+    const schedule = [
+        { start: "07:45", end: "07:55", task: "Face wash & Wake up" },
+        { start: "07:55", end: "08:25", task: "Exercise 🏃‍♀️" },
+        { start: "08:25", end: "09:00", task: "Brushing & Tiffin 🥞" },
+        { start: "09:00", end: "10:30", task: "Study Session 1 📚" },
+        { start: "10:30", end: "11:30", task: "Helping Mom with chores 🧹" },
+        { start: "11:30", end: "12:45", task: "Skincare, Body Care & Freshen Up ✨" },
+        { start: "12:45", end: "13:30", task: "Lunch Prep / Free Time 🍲" },
+        { start: "13:30", end: "14:00", task: "Lunch Time 🍽️" },
+        { start: "14:00", end: "14:45", task: "TV Time 📺" },
+        { start: "14:45", end: "15:45", task: "Journaling 📓" },
+        { start: "15:45", end: "16:30", task: "Playing / Dancing 💃" },
+        { start: "16:30", end: "17:00", task: "Snacks ☕" },
+        { start: "17:00", end: "17:45", task: "Solo Walk 🚶‍♀️" },
+        { start: "17:45", end: "18:45", task: "Tablet Time 📱" },
+        { start: "18:45", end: "19:45", task: "Study Session 2 📖" },
+        { start: "19:45", end: "20:45", task: "Phone & Research 🔍" },
+        { start: "20:45", end: "21:00", task: "Night Freshen Up 🚰" },
+        { start: "21:00", end: "21:20", task: "Dinner 🥗" },
+        { start: "21:20", end: "07:45", task: "Sleep 💤" }
+    ];
+
+    function updateDashboard() {
+        const now = new Date();
+        // Update Clock
+        document.getElementById('clock').innerText = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+        // Update Current Task
+        let currentHour = now.getHours();
+        let currentMinute = now.getMinutes();
+        let currentTimeValue = currentHour + (currentMinute / 60);
+
+        let activeTask = "Transitioning / Free Time";
+
+        for (let i = 0; i < schedule.length; i++) {
+            let startParts = schedule[i].start.split(':');
+            let endParts = schedule[i].end.split(':');
+            let startVal = parseInt(startParts[0]) + (parseInt(startParts[1]) / 60);
+            let endVal = parseInt(endParts[0]) + (parseInt(endParts[1]) / 60);
+
+            // Handle sleep wrapping past midnight
+            if (endVal < startVal) {
+                if (currentTimeValue >= startVal || currentTimeValue < endVal) {
+                    activeTask = schedule[i].task; break;
+                }
+            } else {
+                if (currentTimeValue >= startVal && currentTimeValue < endVal) {
+                    activeTask = schedule[i].task; break;
+                }
+            }
+        }
+        document.getElementById('current-task').innerText = activeTask;
+    }
+
+    setInterval(updateDashboard, 1000);
+    updateDashboard();
+
+    // Diary Logic (Saves to browser storage)
+    const diaryInput = document.getElementById('diary');
+    diaryInput.value = localStorage.getItem('myDailyDiary') || '';
+
+    function saveDiary() {
+        localStorage.setItem('myDailyDiary', diaryInput.value);
+        const msg = document.getElementById('save-msg');
+        msg.style.display = 'inline';
+        setTimeout(() => { msg.style.display = 'none'; }, 2000);
+    }
+</script>
+
+</body>
+</html>
