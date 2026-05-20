@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Analytics — CFL GPS Monitoring | Khammam</title>
+  <link rel="stylesheet" href="css/app.css" />
+  <link rel="stylesheet" href="css/cfl.css" />
+  <style>
+    body { background: var(--cfl-bg); margin: 0; }
+    .analytics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 20px; padding: 20px; }
+    @media(max-width:500px){ .analytics-grid{ grid-template-columns:1fr; padding:12px; } }
+    .score-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .score-table th { background: #1e3a8a; color: #fff; padding: 8px 12px; text-align: left; font-size: 12px; }
+    .score-table td { padding: 8px 12px; border-bottom: 1px solid #e5eaf5; }
+    .score-table tr:hover td { background: #f8faff; }
+    .grade-A\+ { color:#15803d; font-weight:800; }
+    .grade-A  { color:#16a34a; font-weight:700; }
+    .grade-B  { color:#d97706; font-weight:700; }
+    .grade-C  { color:#ea580c; font-weight:700; }
+    .grade-F  { color:#dc2626; font-weight:800; }
+  </style>
+</head>
+<body>
+
+<div class="cfl-gov-strip"></div>
+
+<header class="cfl-header">
+  <div class="cfl-header__brand">
+    <div class="cfl-header__logo">📊</div>
+    <div>
+      <div class="cfl-header__title">District Analytics — CFL GPS Monitor</div>
+      <div class="cfl-header__subtitle">Performance scores · Camp trends · Village coverage · Alert analysis</div>
+    </div>
+  </div>
+  <nav class="cfl-header__nav">
+    <a href="ldm-dashboard.html">← Dashboard</a>
+    <a href="cfl-assignments.html">Assignments</a>
+  </nav>
+</header>
+
+<!-- KPI Summary -->
+<div class="kpi-bar" id="kpi-bar"></div>
+
+<!-- Charts Grid -->
+<div class="analytics-grid">
+
+  <div class="chart-card">
+    <div class="chart-card__title">🏆 Monthly Performance Scores — All Counselors</div>
+    <canvas id="chart-performance" height="220"></canvas>
+  </div>
+
+  <div class="chart-card">
+    <div class="chart-card__title">🗺 Villages Visited Distribution (This Month)</div>
+    <canvas id="chart-villages" height="220"></canvas>
+  </div>
+
+  <div class="chart-card">
+    <div class="chart-card__title">📅 Camp Activity Trend — Last 30 Days</div>
+    <canvas id="chart-camps" height="220"></canvas>
+  </div>
+
+  <div class="chart-card">
+    <div class="chart-card__title">🚨 Alert Distribution by Type (Last 30 Days)</div>
+    <canvas id="chart-alerts" height="220"></canvas>
+  </div>
+
+  <div class="chart-card">
+    <div class="chart-card__title">🏛 CFL Centre Comparison</div>
+    <canvas id="chart-centres" height="220"></canvas>
+  </div>
+
+  <!-- Performance Leaderboard -->
+  <div class="chart-card" style="grid-column: 1 / -1;">
+    <div class="chart-card__title" style="display:flex;justify-content:space-between;align-items:center;">
+      <span>📋 Performance Leaderboard — <span id="month-label"></span></span>
+      <div style="display:flex;gap:8px;">
+        <select id="perf-month" class="form-control" style="width:120px;"></select>
+        <button class="btn btn--xs btn--outline" onclick="loadLeaderboard()">↻ Refresh</button>
+        <button class="btn btn--xs btn--primary" onclick="downloadPerf()">⬇ PDF</button>
+      </div>
+    </div>
+    <div style="overflow-x:auto;margin-top:12px;">
+      <table class="score-table">
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Counselor</th>
+            <th>Centre</th>
+            <th>Grade</th>
+            <th>Score</th>
+            <th>Village Visit</th>
+            <th>GPS Comply</th>
+            <th>Camp Quality</th>
+            <th>Travel</th>
+            <th>Reporting</th>
+            <th>Reach</th>
+            <th>Villages</th>
+            <th>Camps</th>
+            <th>Participants</th>
+            <th>KMs</th>
+          </tr>
+        </thead>
+        <tbody id="leaderboard-body">
+          <tr><td colspan="15" style="text-align:center;padding:24px;color:#94a3b8;">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="config.js"></script>
+<script src="js/supabase-init.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/cfl-config.js"></script>
+<script src="js/cfl-reports.js"></script>
+<script src="js/cfl-analytics-page.js"></script>
+
+<script>
+const sb = () => window.supabaseClient;
+
+// Populate month selector
+async function populateMonthSelect() {
+  const sel = document.getElementById('perf-month');
+  const now = new Date();
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const val = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+    const opt = new Option(d.toLocaleString('en-IN',{month:'long',year:'numeric'}), val);
+    sel.appendChild(opt);
+  }
+}
+
+async function loadLeaderboard() {
+  const val   = document.getElementById('perf-month').value || (new Date().getFullYear() + '-' + String(new Date().getMonth()+1).padStart(2,'0'));
+  const [year, month] = val.split('-').map(Number);
+  document.getElementById('month-label').textContent = new Date(year, month-1, 1).toLocaleString('en-IN', { month:'long', year:'numeric' });
+
+  const { data } = await sb()
+    .from('cfl_performance_scores')
+    .select(`
+      total_score, performance_grade, district_rank,
+      village_visit_score, gps_compliance_score, camp_quality_score,
+      travel_coverage_score, reporting_score, participant_reach_score,
+      villages_assigned, villages_visited, camps_conducted, total_participants, total_km_traveled,
+      cfl_profiles!counselor_id(full_name, cfl_centres!cfl_centre_id(code))
+    `)
+    .eq('score_month', month)
+    .eq('score_year', year)
+    .order('district_rank');
+
+  const tbody = document.getElementById('leaderboard-body');
+  if (!data?.length) {
+    tbody.innerHTML = '<tr><td colspan="15" style="text-align:center;padding:24px;color:#94a3b8;">No performance data yet for this month</td></tr>';
+    return;
+  }
+  const gradeClass = { 'A+': 'grade-A\\+', 'A': 'grade-A', 'B': 'grade-B', 'C': 'grade-C', 'D': 'grade-C', 'F': 'grade-F' };
+  tbody.innerHTML = data.map((d, i) => `
+    <tr>
+      <td>${d.district_rank || i+1}</td>
+      <td style="font-weight:600;">${d.cfl_profiles?.full_name || '–'}</td>
+      <td>${d.cfl_profiles?.cfl_centres?.code || '–'}</td>
+      <td class="${gradeClass[d.performance_grade]||''}" style="font-size:16px;">${d.performance_grade || '–'}</td>
+      <td style="font-weight:700;">${parseFloat(d.total_score||0).toFixed(1)}</td>
+      <td>${parseFloat(d.village_visit_score||0).toFixed(1)}</td>
+      <td>${parseFloat(d.gps_compliance_score||0).toFixed(1)}</td>
+      <td>${parseFloat(d.camp_quality_score||0).toFixed(1)}</td>
+      <td>${parseFloat(d.travel_coverage_score||0).toFixed(1)}</td>
+      <td>${parseFloat(d.reporting_score||0).toFixed(1)}</td>
+      <td>${parseFloat(d.participant_reach_score||0).toFixed(1)}</td>
+      <td>${d.villages_visited}/${d.villages_assigned}</td>
+      <td>${d.camps_conducted}</td>
+      <td>${d.total_participants}</td>
+      <td>${parseFloat(d.total_km_traveled||0).toFixed(0)} km</td>
+    </tr>`).join('');
+}
+
+async function downloadPerf() {
+  const val = document.getElementById('perf-month').value || '';
+  const [year, month] = val.split('-').map(Number);
+  window.CflReports?.generatePerformanceReportPDF(month || new Date().getMonth()+1, year || new Date().getFullYear());
+}
+
+async function loadKpis() {
+  const { data } = await sb().from('v_cfl_district_kpis').select('*').single();
+  if (!data) return;
+  document.getElementById('kpi-bar').innerHTML = [
+    { icon:'👥', value: data.total_counselors,                 label:'Counselors',      cls:'blue'  },
+    { icon:'📡', value: data.active_now,                       label:'Active Now',      cls:'green' },
+    { icon:'🏕', value: data.conducting_camp,                  label:'In Camp',         cls:'blue'  },
+    { icon:'📋', value: data.camps_today,                      label:'Camps Today',     cls:'green' },
+    { icon:'👥', value: (data.participants_today||0).toLocaleString('en-IN'), label:'Participants', cls:'purple' },
+    { icon:'📍', value: data.villages_visited_today,           label:'Villages Visited',cls:'green' },
+    { icon:'🔔', value: data.active_alerts,                    label:'Active Alerts',   cls:'amber' },
+  ].map(k => `
+    <div class="kpi-card kpi-card--${k.cls}">
+      <div class="kpi-card__icon">${k.icon}</div>
+      <div class="kpi-card__value">${k.value ?? '–'}</div>
+      <div class="kpi-card__label">${k.label}</div>
+    </div>`).join('');
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  await populateMonthSelect();
+  await Promise.all([ loadKpis(), loadLeaderboard() ]);
+  document.getElementById('perf-month').addEventListener('change', loadLeaderboard);
+});
+</script>
+
+</body>
+</html>

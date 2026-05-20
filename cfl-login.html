@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login — CFL GPS Monitoring System | Khammam</title>
+  <link rel="stylesheet" href="css/app.css" />
+  <link rel="stylesheet" href="css/cfl.css" />
+  <style>
+    body { background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 40%, #1d4ed8 70%, #0ea5e9 100%); min-height: 100vh; }
+    .login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; flex-direction: column; gap: 20px; }
+    .gov-brand { text-align: center; color: #fff; }
+    .gov-brand__emblem { font-size: 52px; margin-bottom: 8px; }
+    .gov-brand__title { font-size: 20px; font-weight: 800; margin: 0; }
+    .gov-brand__sub { font-size: 13px; opacity: .75; margin: 4px 0 0; }
+    .card { background: #fff; border-radius: 20px; padding: 36px 32px; width: 100%; max-width: 400px; box-shadow: 0 24px 80px rgba(0,0,0,.3); }
+    .card__title { font-size: 22px; font-weight: 800; color: #1e3a8a; margin: 0 0 6px; }
+    .card__sub   { font-size: 13px; color: #6b7280; margin: 0 0 24px; }
+    .role-tabs { display: flex; gap: 6px; background: #f1f5f9; border-radius: 10px; padding: 4px; margin-bottom: 20px; }
+    .role-tab { flex: 1; padding: 8px; border-radius: 8px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; background: transparent; color: #475569; transition: all .15s; }
+    .role-tab.active { background: #1e3a8a; color: #fff; }
+    .divider { text-align: center; color: #94a3b8; font-size: 12px; margin: 14px 0; position: relative; }
+    .divider::before, .divider::after { content: ''; position: absolute; top: 50%; width: 40%; height: 1px; background: #e2e8f0; }
+    .divider::before { left: 0; } .divider::after { right: 0; }
+    .bottom-links { text-align: center; font-size: 12px; color: rgba(255,255,255,.7); }
+    .bottom-links a { color: rgba(255,255,255,.9); }
+  </style>
+</head>
+<body>
+
+<div class="login-wrap">
+
+  <!-- Government branding -->
+  <div class="gov-brand">
+    <div class="gov-brand__emblem">🏛</div>
+    <h1 class="gov-brand__title">CFL GPS Monitoring System</h1>
+    <p class="gov-brand__sub">Centre for Financial Literacy · Khammam District · NABARD · Telangana</p>
+  </div>
+
+  <!-- Login Card -->
+  <div class="card">
+    <h2 class="card__title">Welcome Back</h2>
+    <p class="card__sub">Sign in to access your dashboard</p>
+
+    <!-- Role Selector -->
+    <div class="role-tabs">
+      <button class="role-tab active" onclick="setRole('ldm', this)">🏛 LDM</button>
+      <button class="role-tab" onclick="setRole('manager', this)">🏢 Manager</button>
+      <button class="role-tab" onclick="setRole('counselor', this)">👤 Counselor</button>
+    </div>
+
+    <!-- Mobile / OTP Login -->
+    <div id="login-step-1">
+      <div class="form-group">
+        <label>Registered Mobile Number</label>
+        <input type="tel" id="mobile" class="form-control" placeholder="10-digit mobile" maxlength="10" inputmode="numeric" />
+      </div>
+      <button class="btn btn--primary btn--full btn--lg" onclick="loginWithMobile()">Continue →</button>
+    </div>
+
+    <div id="login-step-2" class="hidden">
+      <p style="font-size:13px;color:#6b7280;margin-bottom:14px;">OTP sent to <strong id="otp-target"></strong></p>
+      <div class="form-group">
+        <label>OTP</label>
+        <input type="text" id="otp" class="form-control" placeholder="Enter OTP" maxlength="6" inputmode="numeric"
+               style="letter-spacing:6px;font-size:22px;text-align:center;" />
+      </div>
+      <button class="btn btn--primary btn--full btn--lg" onclick="verifyMobileOtp()">Verify →</button>
+      <button class="btn btn--outline btn--full mt-2" onclick="backToStep1()">← Change Number</button>
+    </div>
+
+    <div class="divider">or</div>
+
+    <!-- Email / Password Login -->
+    <div class="form-group">
+      <label>Email Address</label>
+      <input type="email" id="email" class="form-control" placeholder="officer@cfl.in" />
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="password" class="form-control" placeholder="••••••••" />
+    </div>
+    <button class="btn btn--outline btn--full" onclick="loginWithEmail()">Sign In with Email</button>
+
+    <div id="login-error" class="hidden" style="margin-top:12px;background:#fee2e2;color:#b91c1c;padding:12px;border-radius:8px;font-size:13px;"></div>
+    <div id="login-success" class="hidden" style="margin-top:12px;background:#dcfce7;color:#15803d;padding:12px;border-radius:8px;font-size:13px;"></div>
+  </div>
+
+  <!-- Footer links -->
+  <div class="bottom-links">
+    <p>
+      <a href="ldm-dashboard.html">LDM Dashboard</a> ·
+      <a href="counselor-app.html">Counselor App</a> ·
+      <a href="index.html">Prajadarbar</a>
+    </p>
+    <p style="font-size:11px;opacity:.6;">
+      CFL GPS Monitoring v1.0 · Khammam District Administration · Telangana
+    </p>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script src="js/supabase-init.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/cfl-config.js"></script>
+<script>
+
+let _selectedRole = 'ldm';
+const ROLE_REDIRECTS = {
+  ldm:       'ldm-dashboard.html',
+  manager:   'ldm-dashboard.html',
+  counselor: 'counselor-app.html',
+};
+
+function setRole(role, el) {
+  _selectedRole = role;
+  document.querySelectorAll('.role-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function backToStep1() {
+  document.getElementById('login-step-2').classList.add('hidden');
+  document.getElementById('login-step-1').classList.remove('hidden');
+}
+
+async function loginWithMobile() {
+  const mobile = document.getElementById('mobile').value.trim();
+  if (!/^\d{10}$/.test(mobile)) { showError('Enter a valid 10-digit mobile number'); return; }
+
+  localStorage.setItem('cfl_mobile', mobile);
+  document.getElementById('otp-target').textContent = mobile;
+  document.getElementById('login-step-1').classList.add('hidden');
+  document.getElementById('login-step-2').classList.remove('hidden');
+
+  const isDev = location.hostname === 'localhost' || CFL_CONFIG.DEMO_MODE;
+  if (!isDev) {
+    try {
+      await window.supabaseClient.auth.signInWithOtp({ phone: '+91' + mobile });
+    } catch(e) { showError(e.message); return; }
+  }
+  showSuccess('OTP sent. Check SMS.' + (isDev ? ' (Dev: enter any 6 digits)' : ''));
+}
+
+async function verifyMobileOtp() {
+  const mobile = localStorage.getItem('cfl_mobile');
+  const otp    = document.getElementById('otp').value.trim();
+  if (!otp) { showError('Enter OTP'); return; }
+
+  const isDev = location.hostname === 'localhost' || CFL_CONFIG.DEMO_MODE;
+  if (!isDev) {
+    try {
+      await window.supabaseClient.auth.verifyOtp({ phone: '+91' + mobile, token: otp, type: 'sms' });
+    } catch(e) { showError(e.message); return; }
+  }
+
+  // Determine role from profile
+  const { data: profile } = await window.supabaseClient
+    .from('cfl_profiles').select('id,role,status').eq('mobile', mobile).single();
+
+  if (!profile) { showError('Mobile not registered. Contact your LDM.'); return; }
+  if (profile.status !== 'active') { showError('Account ' + profile.status + '. Contact LDM.'); return; }
+
+  showSuccess('Login successful! Redirecting…');
+  setTimeout(() => { window.location.href = ROLE_REDIRECTS[profile.role] || 'ldm-dashboard.html'; }, 800);
+}
+
+async function loginWithEmail() {
+  const email    = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
+  if (!email || !password) { showError('Enter email and password'); return; }
+  try {
+    const { data, error } = await window.supabaseClient.auth.signInWithPassword({ email, password });
+    if (error) { showError(error.message); return; }
+    showSuccess('Login successful! Redirecting…');
+    setTimeout(() => { window.location.href = ROLE_REDIRECTS[_selectedRole]; }, 800);
+  } catch(e) { showError(e.message); }
+}
+
+function showError(msg) {
+  const el = document.getElementById('login-error');
+  el.textContent = msg; el.classList.remove('hidden');
+  document.getElementById('login-success').classList.add('hidden');
+}
+function showSuccess(msg) {
+  const el = document.getElementById('login-success');
+  el.textContent = msg; el.classList.remove('hidden');
+  document.getElementById('login-error').classList.add('hidden');
+}
+</script>
+</body>
+</html>

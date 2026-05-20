@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Assignment Management — CFL GPS Monitoring | Khammam</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="css/app.css" />
+  <link rel="stylesheet" href="css/cfl.css" />
+  <style>
+    body { background: var(--cfl-bg); margin: 0; }
+    #assignment-map { height: 350px; border-radius: 12px; }
+    .assign-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; padding: 16px; }
+    .filter-bar { padding: 12px 16px; background: #fff; border-bottom: 1px solid var(--cfl-border); display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  </style>
+</head>
+<body>
+
+<div class="cfl-gov-strip"></div>
+
+<header class="cfl-header">
+  <div class="cfl-header__brand">
+    <div class="cfl-header__logo">📋</div>
+    <div>
+      <div class="cfl-header__title">Assignment Management</div>
+      <div class="cfl-header__subtitle">Assign villages, targets & schedules to CFL Counselors</div>
+    </div>
+  </div>
+  <nav class="cfl-header__nav">
+    <a href="ldm-dashboard.html">← Dashboard</a>
+    <a href="counselor-app.html">Counselor App</a>
+  </nav>
+</header>
+
+<div class="filter-bar">
+  <select id="filter-centre" class="form-control" style="width:180px;">
+    <option value="">All CFL Centres</option>
+  </select>
+  <select id="filter-counselor" class="form-control" style="width:200px;">
+    <option value="">All Counselors</option>
+  </select>
+  <input type="date" id="filter-date" class="form-control" style="width:160px;" />
+  <select id="filter-status" class="form-control" style="width:150px;">
+    <option value="">All Status</option>
+    <option value="pending">Pending</option>
+    <option value="in_progress">In Progress</option>
+    <option value="completed">Completed</option>
+    <option value="missed">Missed</option>
+  </select>
+  <button class="btn btn--primary" onclick="loadAssignments()">🔍 Filter</button>
+  <button class="btn btn--outline" onclick="document.getElementById('new-assignment-modal').classList.remove('hidden')">+ New Assignment</button>
+  <span style="margin-left:auto;font-size:13px;color:#6b7280;" id="assign-count"></span>
+</div>
+
+<!-- Map Preview -->
+<div style="padding:16px 16px 0;">
+  <div class="chart-card" style="margin-bottom:0;">
+    <div class="chart-card__title">🗺 Assignment Map — Village Locations</div>
+    <div id="assignment-map"></div>
+  </div>
+</div>
+
+<!-- Assignments Grid -->
+<div id="assignments-grid" class="assign-grid">
+  <div style="grid-column:1/-1;text-align:center;padding:40px;color:#94a3b8;">Loading…</div>
+</div>
+
+<!-- New Assignment Modal -->
+<div id="new-assignment-modal" class="modal-overlay hidden">
+  <div class="camp-modal">
+    <div class="camp-modal__header">
+      <h3>+ New Assignment</h3>
+      <button onclick="document.getElementById('new-assignment-modal').classList.add('hidden')" style="background:transparent;border:none;color:#fff;font-size:20px;cursor:pointer;">✕</button>
+    </div>
+    <div class="camp-modal__body">
+      <div class="form-group">
+        <label>Counselor *</label>
+        <select id="a-counselor" class="form-control"></select>
+      </div>
+      <div class="form-group">
+        <label>Village *</label>
+        <select id="a-village" class="form-control"></select>
+      </div>
+      <div class="form-group">
+        <label>Scheduled Date *</label>
+        <input type="date" id="a-date" class="form-control" />
+      </div>
+      <div class="form-group">
+        <label>Camp Topic</label>
+        <input type="text" id="a-topic" class="form-control" placeholder="e.g. Savings & Deposits" />
+      </div>
+      <div class="form-group">
+        <label>Awareness Category</label>
+        <select id="a-category" class="form-control">
+          <option value="savings">Savings & Deposits</option>
+          <option value="credit">Credit Awareness</option>
+          <option value="insurance">Insurance Benefits</option>
+          <option value="digital_payments">Digital Payments</option>
+          <option value="pension">Pension Schemes</option>
+          <option value="government_schemes">Government Schemes</option>
+          <option value="debt_management">Debt Management</option>
+          <option value="investment">Investment / Mutual Funds</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Target Participants</label>
+        <input type="number" id="a-target" class="form-control" value="20" min="1" />
+      </div>
+      <div class="form-group">
+        <label>Special Instructions</label>
+        <textarea id="a-instructions" class="form-control" rows="2"></textarea>
+      </div>
+      <div id="a-error" class="hidden" style="background:#fee2e2;color:#b91c1c;padding:10px;border-radius:8px;font-size:13px;margin-bottom:10px;"></div>
+      <button class="btn btn--primary btn--full btn--lg" onclick="createAssignment()">✅ Create Assignment</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="config.js"></script>
+<script src="js/supabase-init.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/cfl-config.js"></script>
+<script>
+
+const sb = () => window.supabaseClient;
+let _map, _markers = [], _counselors = [], _villages = [];
+
+async function init() {
+  document.getElementById('filter-date').value = new Date().toISOString().slice(0,10);
+  document.getElementById('a-date').value = new Date().toISOString().slice(0,10);
+
+  initMap();
+  await Promise.all([ loadFilters(), loadAssignments() ]);
+}
+
+function initMap() {
+  _map = L.map('assignment-map', { center: [CFL_CONFIG.MAP_CENTER_LAT, CFL_CONFIG.MAP_CENTER_LNG], zoom: 9 });
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(_map);
+}
+
+async function loadFilters() {
+  const [ centresRes, counselorsRes, villagesRes ] = await Promise.all([
+    sb().from('cfl_centres').select('id,code,name').eq('is_active',true).order('code'),
+    sb().from('cfl_profiles').select('id,full_name,employee_id,cfl_centre_id').eq('role','counselor').eq('status','active').order('full_name'),
+    sb().from('cfl_villages').select('id,name,mandal,lat,lng,cfl_centre_id,geofence_radius_m').eq('is_active',true).order('name'),
+  ]);
+
+  _counselors = counselorsRes.data || [];
+  _villages   = villagesRes.data   || [];
+
+  const centresSel    = document.getElementById('filter-centre');
+  const counselorSels = [document.getElementById('filter-counselor'), document.getElementById('a-counselor')];
+  const villageSel    = document.getElementById('a-village');
+
+  (centresRes.data || []).forEach(c => {
+    const o = new Option(c.name + ' (' + c.code + ')', c.id);
+    centresSel.appendChild(o);
+  });
+  _counselors.forEach(c => {
+    counselorSels.forEach(sel => sel.appendChild(new Option(c.full_name + ' · ' + c.employee_id, c.id)));
+  });
+  _villages.forEach(v => {
+    villageSel.appendChild(new Option(v.name + ' — ' + v.mandal, v.id));
+  });
+
+  // Map villages
+  _villages.forEach(v => {
+    const m = L.circleMarker([parseFloat(v.lat), parseFloat(v.lng)], {
+      radius: 7, color: '#4f46e5', fillColor: '#818cf8', fillOpacity: 0.8, weight: 2,
+    }).addTo(_map);
+    m.bindTooltip(`<b>${v.name}</b><br>${v.mandal}`);
+    L.circle([parseFloat(v.lat), parseFloat(v.lng)], {
+      radius: v.geofence_radius_m || 300,
+      color: '#6366f1', fillColor: '#6366f1', fillOpacity: 0.07, weight: 1, dashArray: '4 4',
+    }).addTo(_map);
+  });
+}
+
+async function loadAssignments() {
+  const centreId    = document.getElementById('filter-centre').value;
+  const counselorId = document.getElementById('filter-counselor').value;
+  const date        = document.getElementById('filter-date').value;
+  const status      = document.getElementById('filter-status').value;
+
+  let q = sb().from('cfl_assignments').select(`
+    id, scheduled_date, camp_topic, awareness_category, target_participants, status,
+    completed_at, actual_participants, completion_notes,
+    cfl_profiles!counselor_id(full_name, employee_id, cfl_centres!cfl_centre_id(name,code)),
+    cfl_villages!village_id(name, mandal, lat, lng)
+  `).order('scheduled_date', { ascending: false }).limit(200);
+
+  if (counselorId) q = q.eq('counselor_id', counselorId);
+  if (date)        q = q.eq('scheduled_date', date);
+  if (status)      q = q.eq('status', status);
+
+  const { data, error } = await q;
+  if (error) { console.error(error); return; }
+
+  const filtered = centreId
+    ? (data||[]).filter(a => a.cfl_profiles?.cfl_centres?.id === centreId)
+    : (data||[]);
+
+  document.getElementById('assign-count').textContent = `${filtered.length} assignments`;
+  renderAssignments(filtered);
+  updateMapAssignments(filtered);
+}
+
+function renderAssignments(assignments) {
+  const grid = document.getElementById('assignments-grid');
+  if (!assignments.length) {
+    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:#94a3b8;">No assignments found</div>';
+    return;
+  }
+  const statusColors = { pending:'default', in_progress:'primary', completed:'success', missed:'critical', rescheduled:'warning' };
+  grid.innerHTML = assignments.map(a => {
+    const v = a.cfl_villages;
+    const c = a.cfl_profiles;
+    return `
+    <div class="assignment-card">
+      <div class="assignment-card__header">
+        <span style="font-size:15px;font-weight:700;color:var(--cfl-primary);">📍 ${v?.name || '–'}</span>
+        <span class="badge badge--${statusColors[a.status]||'default'}">${a.status}</span>
+      </div>
+      <div style="font-size:12px;color:#6b7280;margin-bottom:8px;">
+        📅 ${a.scheduled_date} &nbsp;|&nbsp; 🏛 ${v?.mandal||''}
+      </div>
+      <div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:4px;">👤 ${c?.full_name||'–'}</div>
+      <div style="font-size:12px;color:#6b7280;margin-bottom:8px;">${c?.cfl_centres?.name||''}</div>
+      <div style="font-size:12px;margin-bottom:10px;">
+        📚 ${a.camp_topic||'–'} &nbsp;|&nbsp; 🎯 ${a.target_participants} persons
+      </div>
+      ${a.status === 'completed' ? `
+        <div style="background:#f0fdf4;border-radius:8px;padding:8px;font-size:12px;">
+          ✅ Completed · Participants: ${a.actual_participants||0} · ${a.completed_at ? new Date(a.completed_at).toLocaleString('en-IN') : ''}
+        </div>` : ''}
+      ${a.status === 'pending' ? `
+        <div class="assignment-card__actions">
+          <button class="btn btn--xs btn--danger" onclick="markMissed('${a.id}')">Mark Missed</button>
+          <button class="btn btn--xs btn--outline" onclick="reschedule('${a.id}')">Reschedule</button>
+        </div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function updateMapAssignments(assignments) {
+  _markers.forEach(m => _map.removeLayer(m));
+  _markers = [];
+  const done = new Set();
+  assignments.forEach(a => {
+    const v = a.cfl_villages;
+    if (!v || done.has(v.name)) return;
+    done.add(v.name);
+    const colors = { completed: '#16a34a', missed: '#dc2626', pending: '#d97706', in_progress: '#2563eb' };
+    const m = L.circleMarker([parseFloat(v.lat), parseFloat(v.lng)], {
+      radius: 10, color: '#fff', fillColor: colors[a.status] || '#94a3b8', fillOpacity: 0.9, weight: 2,
+    }).addTo(_map);
+    m.bindTooltip(`<b>${v.name}</b><br>Status: ${a.status}<br>${a.cfl_profiles?.full_name||''}`);
+    _markers.push(m);
+  });
+}
+
+async function createAssignment() {
+  const errEl = document.getElementById('a-error');
+  errEl.classList.add('hidden');
+  const counselorId = document.getElementById('a-counselor').value;
+  const villageId   = document.getElementById('a-village').value;
+  const date        = document.getElementById('a-date').value;
+  const topic       = document.getElementById('a-topic').value.trim();
+  const category    = document.getElementById('a-category').value;
+  const target      = parseInt(document.getElementById('a-target').value) || 20;
+  const notes       = document.getElementById('a-instructions').value.trim();
+
+  if (!counselorId || !villageId || !date) {
+    errEl.textContent = 'Please fill Counselor, Village and Date'; errEl.classList.remove('hidden'); return;
+  }
+
+  const ldm = await sb().from('cfl_profiles').select('id').eq('role','ldm').single();
+  const { error } = await sb().from('cfl_assignments').insert([{
+    counselor_id: counselorId, village_id: villageId, scheduled_date: date,
+    camp_topic: topic || null, awareness_category: category,
+    target_participants: target, special_instructions: notes || null,
+    created_by: ldm.data?.id || null,
+  }]);
+
+  if (error) { errEl.textContent = error.message; errEl.classList.remove('hidden'); return; }
+  document.getElementById('new-assignment-modal').classList.add('hidden');
+  await loadAssignments();
+}
+
+async function markMissed(id) {
+  if (!confirm('Mark this assignment as missed?')) return;
+  await sb().from('cfl_assignments').update({ status: 'missed' }).eq('id', id);
+  await loadAssignments();
+}
+
+async function reschedule(id) {
+  const newDate = prompt('Enter new date (YYYY-MM-DD):');
+  if (!newDate) return;
+  await sb().from('cfl_assignments').update({ scheduled_date: newDate, status: 'rescheduled' }).eq('id', id);
+  await loadAssignments();
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+
+</body>
+</html>

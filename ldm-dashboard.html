@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LDM Command Dashboard — CFL GPS Monitoring | Khammam</title>
+  <meta name="description" content="Lead District Manager real-time command dashboard for CFL counselor GPS monitoring, camp verification and district analytics." />
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="css/app.css" />
+  <link rel="stylesheet" href="css/cfl.css" />
+
+  <style>
+    body { background: var(--cfl-bg); margin: 0; }
+    .page-tabs { display:flex; gap:2px; padding:8px 16px; background:#fff; border-bottom:1px solid var(--cfl-border); }
+    .page-tab { padding:8px 16px; border-radius:8px; cursor:pointer; font-size:13px; font-weight:600; color:#475569; border:none; background:transparent; }
+    .page-tab.active { background:var(--cfl-primary); color:#fff; }
+    .tab-pane { display:none; }
+    .tab-pane.active { display:block; }
+    .map-section { height:calc(100vh - 220px); display:grid; grid-template-columns:300px 1fr 260px; }
+    @media(max-width:900px){ .map-section{grid-template-columns:1fr;} }
+    .sidebar-section { padding:12px; }
+    .sidebar-title { font-size:13px; font-weight:700; color:var(--cfl-primary); padding:8px 12px; border-bottom:1px solid var(--cfl-border); display:flex;align-items:center;gap:6px; }
+  </style>
+</head>
+<body>
+
+<!-- Gov strip -->
+<div class="cfl-gov-strip"></div>
+
+<!-- Header -->
+<header class="cfl-header">
+  <div class="cfl-header__brand">
+    <div class="cfl-header__logo">🏛</div>
+    <div>
+      <div class="cfl-header__title">CFL GPS Monitoring — Khammam District</div>
+      <div class="cfl-header__subtitle">Lead District Manager Command Dashboard · NABARD · Telangana</div>
+    </div>
+  </div>
+  <nav class="cfl-header__nav">
+    <a href="#" onclick="switchTab('live')" class="active" id="tab-live-link">Live Map</a>
+    <a href="#" onclick="switchTab('counselors')" id="tab-counselors-link">Counselors</a>
+    <a href="#" onclick="switchTab('analytics')" id="tab-analytics-link">Analytics</a>
+    <a href="#" onclick="switchTab('reports')" id="tab-reports-link">Reports</a>
+    <a href="cfl-assignments.html">Assignments</a>
+  </nav>
+  <div class="cfl-header__user">
+    <div class="cfl-header__avatar">LDM</div>
+    <div>
+      <div style="font-size:13px;font-weight:600;">Sri P. Venkata Ramana</div>
+      <div style="font-size:11px;opacity:.7;">Lead District Manager</div>
+    </div>
+  </div>
+</header>
+
+<!-- KPI Bar -->
+<div class="kpi-bar" id="kpi-bar">
+  <div class="kpi-card kpi-card--blue">
+    <div class="kpi-card__icon">👥</div>
+    <div class="kpi-card__value" id="kpi-total">12</div>
+    <div class="kpi-card__label">Total Counselors</div>
+  </div>
+  <div class="kpi-card kpi-card--green">
+    <div class="kpi-card__icon">📡</div>
+    <div class="kpi-card__value" id="kpi-active">–</div>
+    <div class="kpi-card__label">Active Now</div>
+  </div>
+  <div class="kpi-card kpi-card--blue">
+    <div class="kpi-card__icon">🏕</div>
+    <div class="kpi-card__value" id="kpi-camp">–</div>
+    <div class="kpi-card__label">Conducting Camp</div>
+  </div>
+  <div class="kpi-card kpi-card--red">
+    <div class="kpi-card__icon">📴</div>
+    <div class="kpi-card__value" id="kpi-offline">–</div>
+    <div class="kpi-card__label">Offline / Inactive</div>
+  </div>
+  <div class="kpi-card kpi-card--green">
+    <div class="kpi-card__icon">📋</div>
+    <div class="kpi-card__value" id="kpi-camps">–</div>
+    <div class="kpi-card__label">Camps Today</div>
+  </div>
+  <div class="kpi-card kpi-card--purple">
+    <div class="kpi-card__icon">👤</div>
+    <div class="kpi-card__value" id="kpi-people">–</div>
+    <div class="kpi-card__label">People Reached</div>
+  </div>
+  <div class="kpi-card kpi-card--amber">
+    <div class="kpi-card__icon">🔔</div>
+    <div class="kpi-card__value" id="kpi-alerts">–</div>
+    <div class="kpi-card__label">Active Alerts</div>
+  </div>
+  <div class="kpi-card kpi-card--green">
+    <div class="kpi-card__icon">📍</div>
+    <div class="kpi-card__value" id="kpi-villages">–</div>
+    <div class="kpi-card__label">Villages Visited</div>
+  </div>
+</div>
+
+<!-- Page Tabs -->
+<div class="page-tabs">
+  <button class="page-tab active" id="tab-live" onclick="switchTab('live')">🗺 Live Map</button>
+  <button class="page-tab" id="tab-counselors" onclick="switchTab('counselors')">👥 Counselors</button>
+  <button class="page-tab" id="tab-analytics" onclick="switchTab('analytics')">📊 Analytics</button>
+  <button class="page-tab" id="tab-reports" onclick="switchTab('reports')">📄 Reports</button>
+</div>
+
+<!-- ─── LIVE MAP TAB ─────────────────────────────────────────────────────── -->
+<div class="tab-pane active" id="pane-live">
+  <div class="map-section">
+
+    <!-- Left Sidebar: Counselor list -->
+    <div class="cfl-sidebar">
+      <div class="sidebar-title">👥 Counselors
+        <span id="online-count" style="margin-left:auto;font-size:11px;font-weight:400;color:#6b7280;"></span>
+      </div>
+      <div id="counselor-quick-list" style="padding:8px;">
+        <div style="text-align:center;padding:24px;color:#94a3b8;font-size:13px;">Loading…</div>
+      </div>
+
+      <!-- Route date picker -->
+      <div style="padding:12px;border-top:1px solid var(--cfl-border);">
+        <div class="sidebar-title" style="padding:0 0 8px;">📍 Route Replay</div>
+        <input type="date" id="route-date" class="form-control"
+               value="" style="margin-bottom:8px;" />
+        <div id="route-stats" style="font-size:13px;color:#64748b;">
+          <div class="route-stat"><span>Select a counselor &rarr;</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Map -->
+    <div class="cfl-map-wrapper">
+      <div id="ldm-map" style="height:100%;"></div>
+    </div>
+
+    <!-- Right Sidebar: Alerts -->
+    <div class="cfl-sidebar cfl-sidebar--right">
+      <div class="sidebar-title">🔔 Active Alerts
+        <button onclick="CflAlertEngine.runScheduledChecks()" class="btn btn--xs btn--outline" style="margin-left:auto;">Scan</button>
+      </div>
+      <div id="alert-list" class="alert-list">
+        <div class="alert-empty">Checking alerts…</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ─── COUNSELORS TAB ────────────────────────────────────────────────────── -->
+<div class="tab-pane" id="pane-counselors">
+  <div style="padding:16px;overflow-x:auto;">
+    <div class="flex justify-between items-center mb-2" style="flex-wrap:wrap;gap:8px;">
+      <h3 style="margin:0;color:var(--cfl-primary);">All Counselors — Live Status</h3>
+      <div class="flex gap-2">
+        <input type="text" id="search-counselors" placeholder="🔍 Search name or centre…" class="form-control" style="width:220px;" />
+        <select id="filter-status" class="form-control" style="width:140px;">
+          <option value="">All Status</option>
+          <option value="online">Active</option>
+          <option value="idle">Idle</option>
+          <option value="offline">Offline</option>
+          <option value="conducting_camp">Conducting Camp</option>
+        </select>
+      </div>
+    </div>
+    <table class="cfl-table">
+      <thead>
+        <tr>
+          <th>Counselor</th>
+          <th>Centre</th>
+          <th>Status</th>
+          <th>Current Village</th>
+          <th>Distance</th>
+          <th>Villages</th>
+          <th>Camps</th>
+          <th>Last Ping</th>
+          <th>Battery</th>
+          <th>Mock GPS</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="counselor-tbody">
+        <tr><td colspan="11" style="text-align:center;padding:24px;color:#94a3b8;">Loading…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ─── ANALYTICS TAB ─────────────────────────────────────────────────────── -->
+<div class="tab-pane" id="pane-analytics">
+  <div style="padding:20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(400px,1fr));gap:20px;">
+    <div class="chart-card">
+      <div class="chart-card__title">📊 Monthly Performance Scores</div>
+      <canvas id="perf-chart" height="200"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-card__title">🗺 Villages Visited (Current Month)</div>
+      <canvas id="villages-chart" height="200"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-card__title">🏕 Daily Camp Activity (Last 30 Days)</div>
+      <canvas id="camps-chart" height="200"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-card__title">🚩 Alert Summary by Type</div>
+      <canvas id="alerts-chart" height="200"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- ─── REPORTS TAB ────────────────────────────────────────────────────────── -->
+<div class="tab-pane" id="pane-reports">
+  <div style="padding:20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;">
+
+    <div class="chart-card">
+      <div class="chart-card__title">📄 Daily District Summary</div>
+      <p style="font-size:13px;color:#6b7280;margin:0 0 12px;">GPS verification + camp report for all 12 counselors (today)</p>
+      <button id="btn-district-pdf" class="btn btn--primary btn--full">⬇ Download PDF</button>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-card__title">🏆 Monthly Performance Report</div>
+      <p style="font-size:13px;color:#6b7280;margin:0 0 12px;">Counselor scores, ranks, village coverage and GPS compliance</p>
+      <button id="btn-perf-pdf" class="btn btn--primary btn--full">⬇ Download PDF</button>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-card__title">⚠ Suspicious Activity Report</div>
+      <p style="font-size:13px;color:#6b7280;margin:0 0 12px;">Mock GPS, duplicate photos and fake reporting (last 7 days)</p>
+      <button id="btn-suspicious-xlsx" class="btn btn--danger btn--full">⬇ Download Excel</button>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-card__title">📍 GPS Track Report</div>
+      <p style="font-size:13px;color:#6b7280;margin:0 0 12px;">Download GPS route for a specific counselor and date</p>
+      <div class="form-grid-2" style="margin-bottom:10px;">
+        <select id="report-counselor" class="form-control"><option value="">Select Counselor</option></select>
+        <input type="date" id="report-date" class="form-control" value="" />
+      </div>
+      <button id="btn-route-excel" class="btn btn--outline btn--full">⬇ Download Excel</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="config.js"></script>
+<script src="js/supabase-init.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/cfl-config.js"></script>
+<script src="js/spoofing-detector.js"></script>
+<script src="js/gps-engine.js"></script>
+<script src="js/geofence-engine.js"></script>
+<script src="js/alert-engine.js"></script>
+<script src="js/cfl-reports.js"></script>
+<script src="js/ldm-page.js"></script>
+
+<script>
+// Tab switching
+function switchTab(tab) {
+  document.querySelectorAll('.page-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-' + tab)?.classList.add('active');
+  document.getElementById('pane-' + tab)?.classList.add('active');
+  if (tab === 'analytics') {
+    setTimeout(() => { if (window.LdmPage) LdmPage.loadAnalyticsChartsExposed?.(); }, 100);
+  }
+}
+
+// Set today's date on route date picker
+document.getElementById('route-date').value = new Date().toISOString().slice(0,10);
+document.getElementById('report-date').value = new Date().toISOString().slice(0,10);
+
+// Route Excel download
+document.getElementById('btn-route-excel')?.addEventListener('click', async () => {
+  const cid  = document.getElementById('report-counselor').value;
+  const date = document.getElementById('report-date').value;
+  if (!cid || !date) { alert('Select a counselor and date'); return; }
+  const { data: p } = await window.supabaseClient.from('cfl_profiles').select('full_name').eq('id', cid).single();
+  CflReports?.generateDailyMovementReport(cid, p?.full_name || 'Counselor', date);
+});
+
+// Expose loadAnalyticsCharts from ldm-page context
+window.LdmPage = window.LdmPage || {};
+LdmPage.loadAnalyticsChartsExposed = () => {
+  // charts already loaded in ldm-page.js init, just resize
+  window.dispatchEvent(new Event('resize'));
+};
+
+// Populate counselor select in reports tab
+async function populateCounselorSelect() {
+  const { data } = await window.supabaseClient.from('cfl_profiles').select('id,full_name,employee_id').eq('role','counselor').order('full_name');
+  const sel = document.getElementById('report-counselor');
+  (data||[]).forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c.id; opt.textContent = c.full_name + ' (' + c.employee_id + ')';
+    sel.appendChild(opt);
+  });
+}
+
+// Quick counselor list in sidebar
+async function populateQuickList() {
+  const { data } = await window.supabaseClient
+    .from('cfl_counselor_live_status')
+    .select(`counselor_id, tracking_status, last_ping_at, today_km,
+      cfl_profiles!counselor_id(full_name, cfl_centres!cfl_centre_id(code))`)
+    .order('last_ping_at', { ascending: false, nullsFirst: false });
+
+  const el = document.getElementById('counselor-quick-list');
+  const online = (data||[]).filter(d => ['online','conducting_camp'].includes(d.tracking_status)).length;
+  document.getElementById('online-count').textContent = `${online} / ${(data||[]).length} active`;
+
+  el.innerHTML = (data||[]).map(cs => {
+    const status = cs.tracking_status || 'offline';
+    const name   = cs.cfl_profiles?.full_name?.split(' ').slice(0,2).join(' ') || '–';
+    const code   = cs.cfl_profiles?.cfl_centres?.code || '–';
+    return `<div class="flex items-center gap-2" style="padding:8px;border-bottom:1px solid #f1f5f9;cursor:pointer;"
+              onclick="LdmPage.viewRoute('${cs.counselor_id}','${cs.cfl_profiles?.full_name}')">
+      <span class="dot dot--${status}"></span>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:600;">${name}</div>
+        <div style="font-size:11px;color:#6b7280;">${code} · ${cs.today_km?.toFixed(1)||0} km</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// Run after LDM page init
+setTimeout(() => { populateCounselorSelect(); populateQuickList(); }, 1000);
+setInterval(populateQuickList, 30000);
+</script>
+
+</body>
+</html>

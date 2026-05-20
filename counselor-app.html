@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>CFL Counselor App — Field GPS Monitor</title>
+  <meta name="theme-color" content="#1e3a8a" />
+
+  <link rel="manifest" href="manifest-cfl.webmanifest" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="css/app.css" />
+  <link rel="stylesheet" href="css/cfl.css" />
+
+  <style>
+    body { background: var(--cfl-bg); margin: 0; overflow-x: hidden; }
+    .page-view { display: none; }
+    .page-view.active { display: block; }
+    #mini-map { height: 200px; border-radius: 12px; overflow: hidden; }
+    canvas { display: none; }
+    video { border-radius: 12px; }
+    .login-section { padding: 24px; }
+    .login-title { font-size: 18px; font-weight: 700; color: var(--cfl-primary); margin-bottom: 16px; }
+  </style>
+</head>
+<body>
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<!-- ─── LOGIN VIEW ─────────────────────────────────────────────────────────── -->
+<div class="page-view active" id="view-login">
+  <div class="cfl-login-page">
+    <div class="cfl-login-card">
+      <div class="cfl-login-card__logo">
+        <div class="emblem">🏛</div>
+        <h2>CFL Counselor App</h2>
+        <p>GPS Field Monitoring · Khammam District</p>
+        <p style="font-size:11px;color:#94a3b8;">NABARD · Telangana</p>
+      </div>
+
+      <div id="login-form">
+        <div class="form-group">
+          <label>Registered Mobile Number</label>
+          <input type="tel" id="login-mobile" class="form-control"
+                 placeholder="9849XXXXXX" maxlength="10" inputmode="numeric" />
+        </div>
+        <button id="btn-send-otp" class="btn btn--primary btn--full btn--lg" onclick="sendOtp()">
+          Send OTP
+        </button>
+      </div>
+
+      <div id="otp-form" class="hidden">
+        <p style="font-size:13px;color:#6b7280;margin-bottom:14px;">
+          OTP sent to <strong id="otp-mobile-display"></strong>
+        </p>
+        <div class="form-group">
+          <label>Enter 6-digit OTP</label>
+          <input type="text" id="login-otp" class="form-control"
+                 placeholder="123456" maxlength="6" inputmode="numeric" style="letter-spacing:6px;font-size:22px;text-align:center;" />
+        </div>
+        <button class="btn btn--primary btn--full btn--lg" onclick="verifyOtp()">
+          Verify & Login
+        </button>
+        <button class="btn btn--outline btn--full mt-2" onclick="showLoginForm()">
+          ← Change Number
+        </button>
+      </div>
+
+      <div id="login-error" class="hidden" style="margin-top:12px;background:#fee2e2;color:#b91c1c;padding:12px;border-radius:8px;font-size:13px;"></div>
+
+      <div style="margin-top:20px;text-align:center;font-size:12px;color:#94a3b8;">
+        <p>For login issues, contact your LDM or CFL Centre Manager</p>
+        <a href="ldm-dashboard.html" style="color:var(--cfl-primary-2);">LDM Dashboard →</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── MAIN APP VIEW ──────────────────────────────────────────────────────── -->
+<div class="page-view" id="view-app">
+
+  <!-- Gov strip -->
+  <div class="cfl-gov-strip"></div>
+
+  <!-- Profile Header -->
+  <div class="profile-card">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;">
+      <div>
+        <div class="profile-card__name" id="p-name">Loading…</div>
+        <div class="profile-card__meta">
+          <span>🪪 <span id="p-empid">–</span></span>
+          <span>🏛 <span id="p-centre">–</span></span>
+        </div>
+        <div class="profile-card__meta">
+          <span>📍 <span id="p-mandal">–</span></span>
+        </div>
+        <div class="profile-card__date" id="p-date"></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;">
+        <button id="btn-install" class="btn btn--outline btn--xs hidden" style="border-color:rgba(255,255,255,.5);color:#fff;">📲 Install App</button>
+        <button class="btn btn--xs" style="background:rgba(255,255,255,.15);color:#fff;" onclick="logout()">Logout</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Error banner -->
+  <div id="error-banner" class="hidden" style="background:#b91c1c;color:#fff;padding:12px 16px;font-size:13px;">
+    ❌ <span id="error-msg"></span>
+  </div>
+
+  <!-- ─── HOME TAB ─────────────────────────────────────────────────────── -->
+  <div class="page-view active" id="tab-home">
+
+    <!-- GPS Status Card -->
+    <div class="mobile-card">
+      <div class="mobile-card__title">📡 GPS Tracking Status</div>
+      <div id="gps-status" class="gps-status gps-status--idle">⌛ Starting GPS…</div>
+      <div class="gps-info-grid">
+        <div class="gps-info-item">
+          <label>Latitude</label>
+          <strong id="gps-lat">–</strong>
+        </div>
+        <div class="gps-info-item">
+          <label>Longitude</label>
+          <strong id="gps-lng">–</strong>
+        </div>
+        <div class="gps-info-item">
+          <label>Accuracy</label>
+          <strong id="gps-acc">–</strong>
+        </div>
+        <div class="gps-info-item">
+          <label>Battery</label>
+          <strong id="gps-batt">–</strong>
+        </div>
+      </div>
+
+      <!-- Geofence status -->
+      <div id="geofence-status">
+        <div class="geofence-inactive">📍 No village geofence active</div>
+      </div>
+    </div>
+
+    <!-- Mini Map -->
+    <div class="mobile-card" style="padding:12px;">
+      <div class="mobile-card__title">🗺 My Location</div>
+      <div id="mini-map"></div>
+    </div>
+
+    <!-- Nearby Villages -->
+    <div class="mobile-card" style="padding:0;overflow:hidden;">
+      <div class="mobile-card__title" style="padding:12px 16px 8px;">📍 Nearby Villages</div>
+      <div id="nearby-villages">
+        <div class="nearby-item muted">Waiting for GPS fix…</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ─── ASSIGNMENTS TAB ───────────────────────────────────────────────── -->
+  <div class="page-view" id="tab-assignments">
+    <div style="padding:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <h3 style="margin:0;color:var(--cfl-primary);font-size:16px;">📋 Today's Assignments</h3>
+        <button class="btn btn--xs btn--outline" onclick="CounselorPage.refreshAssignments()">↻ Refresh</button>
+      </div>
+      <div id="assignments-list">
+        <div class="empty-state">⌛ Loading assignments…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── HISTORY TAB ───────────────────────────────────────────────────── -->
+  <div class="page-view" id="tab-history">
+    <div style="padding:16px;">
+      <h3 style="margin:0 0 12px;color:var(--cfl-primary);font-size:16px;">📊 My Activity</h3>
+      <div id="history-content">
+        <div class="empty-state">Select date to view history</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Nav -->
+  <nav class="bottom-nav">
+    <a href="#" class="bottom-nav__item active" onclick="showTab('home',this)">
+      <span class="icon">🏠</span>Home
+    </a>
+    <a href="#" class="bottom-nav__item" onclick="showTab('assignments',this)">
+      <span class="icon">📋</span>Assignments
+    </a>
+    <a href="#" class="bottom-nav__item" onclick="showTab('history',this)">
+      <span class="icon">📊</span>Activity
+    </a>
+    <a href="ldm-dashboard.html" class="bottom-nav__item">
+      <span class="icon">🖥</span>LDM View
+    </a>
+  </nav>
+
+</div><!-- /view-app -->
+
+<!-- ─── CAMP REPORT MODAL ───────────────────────────────────────────────────── -->
+<div id="camp-modal" class="modal-overlay hidden">
+  <div class="camp-modal">
+    <div class="camp-modal__header">
+      <h3>📝 Camp Report</h3>
+      <button id="btn-close-modal" style="background:transparent;border:none;color:#fff;font-size:20px;cursor:pointer;">✕</button>
+    </div>
+
+    <div class="camp-modal__body">
+      <!-- Village Info -->
+      <div class="form-section">
+        <div class="form-section__title">📍 Village</div>
+        <div style="font-size:17px;font-weight:700;color:var(--cfl-primary);" id="camp-village-name">–</div>
+        <div style="font-size:13px;color:#6b7280;" id="camp-mandal">–</div>
+      </div>
+
+      <!-- Camp Details -->
+      <div class="form-section">
+        <div class="form-section__title">🏕 Camp Details</div>
+        <div class="form-group">
+          <label>Date</label>
+          <input type="date" id="camp-date" class="form-control" />
+        </div>
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label>Start Time</label>
+            <input type="time" id="camp-start" class="form-control" />
+          </div>
+          <div class="form-group">
+            <label>End Time</label>
+            <input type="time" id="camp-end" class="form-control" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Awareness Category</label>
+          <select id="camp-category" class="form-control">
+            <option value="savings">Savings & Deposits</option>
+            <option value="credit">Credit Awareness</option>
+            <option value="insurance">Insurance Benefits</option>
+            <option value="digital_payments">Digital Payments</option>
+            <option value="pension">Pension Schemes</option>
+            <option value="government_schemes">Government Schemes</option>
+            <option value="debt_management">Debt Management</option>
+            <option value="investment">Investment / Mutual Funds</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Camp Topic / Theme</label>
+          <input type="text" id="camp-topic" class="form-control" placeholder="e.g. Jan Dhan Yojana Benefits" />
+        </div>
+      </div>
+
+      <!-- Participants -->
+      <div class="form-section">
+        <div class="form-section__title">👥 Participants</div>
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label>Male</label>
+            <input type="number" id="camp-male" class="form-control" min="0" placeholder="0" />
+          </div>
+          <div class="form-group">
+            <label>Female</label>
+            <input type="number" id="camp-female" class="form-control" min="0" placeholder="0" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Total Participants (auto)</label>
+          <input type="number" id="camp-count" class="form-control" min="0" placeholder="0" />
+        </div>
+      </div>
+
+      <!-- Photos — MANDATORY -->
+      <div class="form-section">
+        <div class="form-section__title">📷 Geo-tagged Photos <span style="color:#dc2626;">*</span></div>
+        <p style="font-size:12px;color:#6b7280;margin:0 0 10px;">
+          Photos MUST be taken live from this app. Gallery upload is NOT allowed.
+          Minimum <strong id="min-photos-text">2</strong> photos required.
+        </p>
+
+        <!-- Camera section -->
+        <div id="camera-section" class="camera-section hidden">
+          <video id="camp-video" class="camera-video" autoplay playsinline muted></video>
+          <canvas id="camp-canvas"></canvas>
+          <div class="camera-controls">
+            <button class="btn-capture" id="btn-capture" title="Capture Photo">📸</button>
+            <button class="btn btn--xs btn--danger" id="btn-stop-camera">✕ Close</button>
+          </div>
+        </div>
+
+        <button id="btn-open-camera" class="btn btn--outline btn--full">
+          📷 Open Camera
+        </button>
+
+        <!-- Photo grid -->
+        <div id="photo-grid" class="photo-grid mt-2"></div>
+        <div id="photo-count" style="font-size:12px;color:#6b7280;margin-top:4px;">0 / 10 photos</div>
+      </div>
+
+      <!-- Remarks -->
+      <div class="form-group">
+        <label>Remarks / Notes</label>
+        <textarea id="camp-remarks" class="form-control" rows="3" placeholder="Any additional observations…"></textarea>
+      </div>
+
+      <!-- Submit -->
+      <button id="btn-submit-camp" class="btn btn--primary btn--full btn--lg" disabled>
+        ✅ Submit Camp Report
+      </button>
+    </div>
+  </div>
+</div><!-- /camp-modal -->
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="config.js"></script>
+<script src="js/supabase-init.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/cfl-config.js"></script>
+<script src="js/spoofing-detector.js"></script>
+<script src="js/gps-engine.js"></script>
+<script src="js/geofence-engine.js"></script>
+<script src="js/alert-engine.js"></script>
+<script src="js/camp-reporter.js"></script>
+<script src="js/counselor-page.js"></script>
+
+<script>
+// ─── Auth flow ──────────────────────────────────────────────────────────────
+
+async function sendOtp() {
+  const mobile = document.getElementById('login-mobile').value.trim();
+  if (!/^\d{10}$/.test(mobile)) { showLoginError('Enter a valid 10-digit mobile number'); return; }
+  localStorage.setItem('cfl_mobile', mobile);
+  document.getElementById('otp-mobile-display').textContent = mobile;
+  document.getElementById('otp-form').classList.remove('hidden');
+  document.getElementById('login-form').classList.add('hidden');
+  document.getElementById('btn-send-otp').disabled = true;
+
+  // In production: call Supabase OTP; here we show a demo bypass for testing
+  const isDev = location.hostname === 'localhost' || location.hostname.includes('127.');
+  if (isDev || CFL_CONFIG.DEMO_MODE) {
+    showLoginError('Dev mode: enter any 6-digit OTP to continue', 'info');
+  } else {
+    try {
+      await window.supabaseClient.auth.signInWithOtp({ phone: '+91' + mobile });
+    } catch(e) {
+      showLoginError(e.message);
+    }
+  }
+}
+
+async function verifyOtp() {
+  const mobile = localStorage.getItem('cfl_mobile');
+  const otp    = document.getElementById('login-otp').value.trim();
+  if (!otp || otp.length < 4) { showLoginError('Enter the OTP'); return; }
+
+  const isDev = location.hostname === 'localhost' || location.hostname.includes('127.');
+  if (!isDev && !CFL_CONFIG.DEMO_MODE) {
+    try {
+      await window.supabaseClient.auth.verifyOtp({ phone: '+91' + mobile, token: otp, type: 'sms' });
+    } catch(e) {
+      showLoginError(e.message); return;
+    }
+  }
+
+  // Verify counselor exists
+  const { data: profile } = await window.supabaseClient
+    .from('cfl_profiles')
+    .select('id,full_name,employee_id,status,cfl_centre_id')
+    .eq('mobile', mobile)
+    .single();
+
+  if (!profile) { showLoginError('Mobile number not registered as CFL Counselor. Contact your LDM.'); return; }
+  if (profile.status !== 'active') { showLoginError('Your account is ' + profile.status + '. Contact LDM.'); return; }
+
+  localStorage.setItem('cfl_profile', JSON.stringify(profile));
+  showAppView();
+}
+
+function showLoginForm() {
+  document.getElementById('otp-form').classList.add('hidden');
+  document.getElementById('login-form').classList.remove('hidden');
+  document.getElementById('btn-send-otp').disabled = false;
+}
+
+function showLoginError(msg, type = 'error') {
+  const el = document.getElementById('login-error');
+  el.textContent = msg;
+  el.className = '';
+  el.classList.remove('hidden');
+  if (type === 'info') el.style.cssText = 'margin-top:12px;background:#e0f2fe;color:#0284c7;padding:12px;border-radius:8px;font-size:13px;';
+  else el.style.cssText = 'margin-top:12px;background:#fee2e2;color:#b91c1c;padding:12px;border-radius:8px;font-size:13px;';
+}
+
+function showAppView() {
+  document.getElementById('view-login').classList.remove('active');
+  document.getElementById('view-app').classList.add('active');
+}
+
+function logout() {
+  localStorage.removeItem('cfl_profile');
+  localStorage.removeItem('cfl_mobile');
+  location.reload();
+}
+
+// Tab switching
+function showTab(name, el) {
+  document.querySelectorAll('.page-view').forEach(v => { if(v.id.startsWith('tab-')) v.classList.remove('active'); });
+  document.getElementById('tab-' + name)?.classList.add('active');
+  document.querySelectorAll('.bottom-nav__item').forEach(i => i.classList.remove('active'));
+  el?.classList.add('active');
+}
+
+// Expose for counselor-page.js
+window.CounselorPage = window.CounselorPage || {};
+CounselorPage.refreshAssignments = () => {
+  if (window._refreshAssignmentsImpl) window._refreshAssignmentsImpl();
+};
+
+// Check if already logged in
+window.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('min-photos-text').textContent = CFL_CONFIG.MIN_PHOTOS_PER_CAMP;
+  const profile = localStorage.getItem('cfl_profile');
+  if (profile) showAppView();
+});
+</script>
+
+</body>
+</html>
