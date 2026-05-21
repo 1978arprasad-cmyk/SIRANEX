@@ -223,7 +223,7 @@ villages as (
 ldm as (select id from cfl_profiles where role = 'ldm' limit 1)
 insert into cfl_assignments (counselor_id, village_id, scheduled_date, camp_topic, awareness_category, target_participants, created_by)
 select c.id, v.id,
-  current_date + (v.rn % 7) as scheduled_date,
+  current_date + (v.rn % 7)::integer as scheduled_date,
   (array['Savings & Deposits','Credit Awareness','Insurance Benefits','Digital Payments',
          'Pension Schemes','Government Schemes','Debt Management','Mutual Funds',
          'SHG Linkage','Jan Dhan Accounts'])[1 + (v.rn % 10)],
